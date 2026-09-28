@@ -680,7 +680,9 @@ Users are responsible for ensuring that downloaded content is used in accordance
 
 # 📄 License
 
-The project license should be added here once a license has been selected.
+DownTik is licensed under the **MIT License**.
+
+See the [LICENSE](LICENSE) file for the full license text.
 
 ---
 
