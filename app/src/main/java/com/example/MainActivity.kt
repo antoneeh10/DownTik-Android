@@ -53,6 +53,7 @@ import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.MainDownloadScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.DownTikTheme
+import com.example.update.ui.UpdateDialog
 
 enum class Screen {
     HOME,
@@ -77,6 +78,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
             val isVideoPreviewOpen by viewModel.isVideoPreviewOpen.collectAsStateWithLifecycle()
+            val showUpdateDialog by viewModel.showUpdateDialog.collectAsStateWithLifecycle()
+            val updateState by viewModel.updateState.collectAsStateWithLifecycle()
 
             DownTikTheme(themeMode = themeMode) {
                 var currentScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
@@ -90,6 +93,19 @@ class MainActivity : ComponentActivity() {
                     } else if (selectedDestination != BottomDestination.VIDEO) {
                         selectedDestination = BottomDestination.VIDEO
                     }
+                }
+
+                // Startup / In-App Update Dialog
+                if (showUpdateDialog) {
+                    UpdateDialog(
+                        updateState = updateState,
+                        onDismiss = { viewModel.dismissUpdateDialog() },
+                        onStartDownload = { asset, release ->
+                            viewModel.startDownloadUpdate(asset, release)
+                        },
+                        onInstall = { viewModel.installDownloadedUpdate() },
+                        onRetry = { viewModel.retryUpdateDownload() }
+                    )
                 }
 
                 Scaffold(

@@ -16,8 +16,17 @@ import com.example.downloader.AudioStage
 import com.example.downloader.DownTikStorage
 import com.example.downloader.DownloadState
 import com.example.downloader.VideoDownloader
+import com.example.data.network.NetworkClient
 import com.example.ui.theme.ThemeMode
+import com.example.update.GitHubRelease
+import com.example.update.ReleaseAsset
+import com.example.update.ReleaseChannel
+import com.example.update.UpdateChecker
+import com.example.update.UpdateDownloader
+import com.example.update.UpdateInstaller
+import com.example.update.UpdateState
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -103,6 +112,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val audioExtractor = AudioExtractor(application)
     val playerManager = com.example.player.DownTikPlayerManager(application)
     val currentPlayingAudio = playerManager.currentPlayingAudio
+
+    // ================= Update System State =================
+    private val updateChecker = UpdateChecker(application)
+    private val updateDownloader = UpdateDownloader(application, NetworkClient.okHttpClient)
+
+    val updateChannel: StateFlow<ReleaseChannel> = settingsRepository.updateChannel
+
+    private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
+    val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
+
+    private val _showUpdateDialog = MutableStateFlow(false)
+    val showUpdateDialog: StateFlow<Boolean> = _showUpdateDialog.asStateFlow()
+
+    private var downloadJob: Job? = null
+
+    init {
+        // Startup check: non-blocking asynchronous check on selected channel
+        viewModelScope.launch {
+            delay(1200) // slight delay to allow smooth initial app launch
+            checkForUpdate(isManual = false)
+        }
+    }
 
     // ================= Video Downloader State =================
     private val _videoUrlInput = MutableStateFlow("")
@@ -479,6 +510,58 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun closeAudioPlayer() {
         playerManager.closeAudio()
+    }
+
+    // ---------------- Update System Actions ----------------
+    fun checkForUpdate(isManual: Boolean = false) {
+        viewModelScope.launch {
+            if (isManual) {
+                _updateState.value = UpdateState.Checking
+            }
+            val result = updateChecker.checkUpdate(settingsRepository.updateChannel.value)
+            _updateState.value = result
+            if (result is UpdateState.UpdateAvailable) {
+                _showUpdateDialog.value = true
+            }
+        }
+    }
+
+    fun setUpdateChannel(channel: ReleaseChannel) {
+        settingsRepository.setUpdateChannel(channel)
+        updateChecker.invalidateCache()
+        checkForUpdate(isManual = true)
+    }
+
+    fun startDownloadUpdate(asset: ReleaseAsset, release: GitHubRelease) {
+        downloadJob?.cancel()
+        downloadJob = viewModelScope.launch {
+            updateDownloader.downloadApk(asset, release).collect { state ->
+                _updateState.value = state
+                if (state is UpdateState.ReadyToInstall) {
+                    UpdateInstaller.installApk(getApplication(), state.apkFile)
+                }
+            }
+        }
+    }
+
+    fun dismissUpdateDialog() {
+        _showUpdateDialog.value = false
+    }
+
+    fun retryUpdateDownload() {
+        val current = _updateState.value
+        if (current is UpdateState.UpdateAvailable) {
+            startDownloadUpdate(current.apkAsset, current.release)
+        } else {
+            checkForUpdate(isManual = true)
+        }
+    }
+
+    fun installDownloadedUpdate() {
+        val current = _updateState.value
+        if (current is UpdateState.ReadyToInstall) {
+            UpdateInstaller.installApk(getApplication(), current.apkFile)
+        }
     }
 
     override fun onCleared() {
