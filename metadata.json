@@ -1,0 +1,6 @@
+{
+  "name": "DownTik",
+  "description": "Minimalist and modern video downloader and audio extractor with instant link extraction, media preview, download progress, and local history.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
