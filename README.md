@@ -1,5 +1,11 @@
 # DownTik
 
+Other version?
+look at
+[Windows](https://github.com/antoneeh10/DownTik-Windows)
+[MacOS](https://github.com/antoneeh10/DownTik-Mac)
+[Linux](https://github.com/antoneeh10/DownTik-Linux)
+-----
 DownTik is a lightweight Android application for downloading TikTok videos and extracting audio from supported TikTok URLs.
 
 The project is designed around a simple download workflow, local media storage, playback support, download history, and a built-in GitHub release update system.
